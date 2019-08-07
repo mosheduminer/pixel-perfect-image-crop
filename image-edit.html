@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+
+<head>
+    <title>Image crop</title>
+
+    <style>
+        body {
+            background-color: #cccccc;
+        }
+
+        #wrapper {
+            position: absolute;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: auto, auto, auto;
+        }
+
+        #crop-button {
+            border-radius: 5px;
+            background-color: lightblue;
+            font-size: 30px;
+        }
+
+        #crop-button:hover {
+            cursor: pointer;
+        }
+
+        #container {
+            margin-top: 15px;
+        }
+
+        #selecter {
+            border-style: solid;
+            border-width: 5px;
+            border-color: black;
+        }
+
+        #original-image {
+            position: absolute;
+            z-index: 0;
+        }
+    </style>
+
+    <script type="text/javascript" src="caman.full.min.js"></script>
+
+    <script>
+        function setup() {
+            let wrapper = document.getElementById("wrapper");
+            let canvas = document.getElementById("original-image");
+            const dimens = [canvas.width, canvas.height]
+            canvas.style.width = dimens[0] + "px"; canvas.style.height = dimens[1] + "px";
+            const innerDimens = [document.getElementById("width").value + "px", document.getElementById("height").value + "px"]
+            let selecter = document.getElementById("selecter");
+            wrapper.style.height = dimens[1]; wrapper.style.width = dimens[0];
+            selecter.style.height = innerDimens[1]; selecter.style.width = innerDimens[0];
+        }
+
+        function changeHeight() {
+            document.getElementById("selecter").style.height = document.getElementById("height").value + "px";
+        }
+        function changeWidth() {
+            document.getElementById("selecter").style.width = document.getElementById("width").value + "px";
+        }
+
+        function loadImage() {
+            const upload = document.getElementById("upload").files[0];
+            let img = document.getElementById("original-image")
+            const reader = new FileReader();
+
+            reader.addEventListener("load", function () {
+                img.src = reader.result;
+            }, false);
+
+            if (upload) {
+                reader.readAsDataURL(upload)
+            }
+
+            Caman("#original-image", function () {
+                this.brightness(5).render();
+            });
+            setTimeout(setup, 10);
+        }
+
+        function crop() {
+            let selectRect = document.getElementById("selecter").getBoundingClientRect()
+            let wrapper = document.getElementById("wrapper");
+            let imgRect = document.getElementById("original-image").getBoundingClientRect();
+            let canvas = document.getElementById("original-image");
+            Caman("#original-image", function () {
+                // width, height, x, y
+                this.crop(selecter.style.width.slice(0, -2),
+                    selecter.style.height.slice(0, -2),
+                    selectRect.left - imgRect.left,
+                    selectRect.top - imgRect.top);
+
+                // Still have to call render!
+                this.render(function () {
+                    this.save();
+                });
+            });
+        }
+    </script>
+
+</head>
+
+<body>
+    <form id="img-form">
+        <label for="width">Width</label>
+        <input type="number" title="width" id="width" value="100" onchange="changeWidth()">
+        <label for="height">Height</label>
+        <input type="number" title="height" id="height" value="100" onchange="changeHeight()">
+        <input type="file" name="pic" accept="image/*" id="upload" onchange="loadImage()">
+        <span id="crop-button" onclick="crop()">Crop and Save</span>
+    </form>
+    <div id="container">
+        <div id="wrapper" onmousedown='mydragg.startMoving(this, "container", event);'
+            onmouseup='mydragg.stopMoving("container");'>
+            <div id="selecter"></div>
+        </div>
+    </div>
+    <div>
+        <img id="original-image" src=""></img>
+    </div>
+
+    <script>
+        var mydragg = function () {
+            return {
+                move: function (divid, xpos, ypos) {
+                    divid.style.left = xpos + 'px';
+                    divid.style.top = ypos + 'px';
+                },
+                startMoving: function (divid, container, evt) {
+                    evt = evt || window.event;
+                    let posX = evt.clientX,
+                        posY = evt.clientY,
+                        divTop = divid.style.top,
+                        divLeft = divid.style.left,
+                        eWi = parseInt(divid.style.width),
+                        eHe = parseInt(divid.style.height),
+                        cWi = parseInt(document.getElementById(container).style.width),
+                        cHe = parseInt(document.getElementById(container).style.height);
+                    document.getElementById(container).style.cursor = 'move';
+                    divTop = divTop.replace('px', '');
+                    divLeft = divLeft.replace('px', '');
+                    let diffX = posX - divLeft,
+                        diffY = posY - divTop;
+                    document.onmousemove = function (evt) {
+                        evt = evt || window.event;
+                        let posX = evt.clientX,
+                            posY = evt.clientY,
+                            aX = posX - diffX,
+                            aY = posY - diffY;
+                        if (aX < 0) aX = 0;
+                        if (aY < 0) aY = 0;
+                        if (aX + eWi > cWi) aX = cWi - eWi;
+                        if (aY + eHe > cHe) aY = cHe - eHe;
+                        mydragg.move(divid, aX, aY);
+                    }
+                },
+                stopMoving: function (container) {
+                    var a = document.createElement('script');
+                    document.getElementById(container).style.cursor = 'default';
+                    document.onmousemove = function () { }
+                },
+            }
+        }();
+    </script>
+</body>
